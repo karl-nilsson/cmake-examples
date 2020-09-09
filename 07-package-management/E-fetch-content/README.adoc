@@ -1,0 +1,81 @@
+= Fetch Content
+:toc:
+:toc-placement!:
+
+toc::[]
+
+# Introduction
+
+Starting in version 3.11, CMake added another way to download and build external projects, link:https://cmake.org/cmake/help/latest/module/FetchContent.html[Fetch Content]. This module downloads content at configure time, whereas +ExternalProject+ does so at build time. Additionally, FetchContent merges the cmake namespaces of parent and child projects.
+
+Once populated, a child project will be added to the main build.
+
+# Implementation
+
+## Standard
+
+A simple example of an child project is as follows:
+
+[source,cmake]
+----
+include(FetchContent)
+FetchContent_Declare(doctest
+  GIT_REPOSITORY    https://github.com/onqtam/doctest.git
+  GIT_TAG           2.4.0
+)
+# set custom options here
+set(DOCTEST_WITH_TESTS OFF)
+# FetchContent_MakeAvailable is only available with cmake v3.14 and later
+FetchContent_MakeAvailable(doctest)
+----
+
+
+## Alternative
+
+If you're stuck on CMake <3.14, or if you want more control over the build
+
+[source,cmake]
+----
+include(FetchContent)
+FetchContent_Declare(doctest
+  GIT_REPOSITORY    https://github.com/onqtam/doctest.git
+  GIT_TAG           2.4.0
+)
+
+FetchContent_GetProperties(doctest)
+if(NOT doctest_POPULATED)
+  # populate child project
+  FetchContent_Pouplate(doctest)
+  # set custom variables, policies here
+  set(DOCTEST_WITH_TESTS OFF)
+  # add content to build
+  add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
+endif()
+----
+
+Once added, you will have a target `doctest` which will attempt to download the doctest repository when you configure your project.
+
+By default the project is assumed to work via CMake and external project will know how to build using standard CMake commands. If the external project uses a different build system, you can set the various commands using +INSTALL_COMMAND+, +CONFIGURE_COMMAND+, +BUILD_COMMAND+, etc.
+
+# Building the Example
+[source,bash]
+----
+$ cmake -S . -B build
+-- The CXX compiler identification is GNU 9.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ~/cmake-examples/07-package-management/E-fetch-content/build
+
+$ cmake --build build/
+Scanning dependencies of target fetchcontent_example
+[ 50%] Building CXX object CMakeFiles/fetchcontent_example.dir/main.cpp.o
+[100%] Linking CXX executable fetchcontent_example
+[100%] Built target fetchcontent_example
+
+$ cd build && ctest
+----
